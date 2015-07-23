@@ -1,0 +1,478 @@
+#!/usr/bin/perl -w
+
+use strict;
+use Curses::UI;
+use Switch;
+
+my $cui = new Curses::UI( -color_support => 1 );
+my $stage = 0;
+my $win = $cui->add(
+	'win',
+	'Window',
+	-border => 1,
+	-bfg => 'red',
+	-bg => 'yellow',
+	-fg => 'black',
+);
+my $nextbutton = $win->add(
+	'nextbutton',
+	'Buttonbox',
+	-buttons => [
+		
+		{
+			-label => 'Exit',
+			-shortcut => 'q',
+			-onpress => \&exit_dlg,
+		},
+		{
+			-label => 'Proceed',
+			-shortcut => 'p',
+			-onpress => \&do_stuffs,
+		}
+	],
+	-y => $win->height-4,
+	-x => $win->width/2 -6,
+);
+
+sub exit_dlg
+{
+	my $ret = $cui->dialog(
+		-message => "Exit Live Debian Builder ?",
+		-title => "Exit",
+		-buttons => ['yes','no'],
+		-values => [1,0],
+	);
+
+	exit(0) if $ret;
+}
+
+
+
+sub greet
+{
+	my ($c) = @_;
+	if($c == 1)
+	{
+		$win->add(
+			'greet',
+			'TextViewer',
+			-text => "Welcome to Debian Live ISO Builder.\n".
+				"\n".
+				"This program will help you to create a Live ".
+				"bootable iso including an installer for ".
+				"Debian based OS from your running Debian.",
+			-wrapping => 1,
+		);
+		$win->title('Welcome');
+	}else
+	{
+		$win->delete('greet');
+		$win->draw();
+	}
+}
+
+sub create_dir
+{
+	my ($c) = @_;
+	switch($c)
+	{
+		case 1	{
+			$win->title('Create Dirs');
+			$win->add(
+				'cdd',
+				'TextViewer',
+				-height => 5,
+				-text => "Click Proceed to create necessary ".
+					"directories if already not created.",
+				-wrapping => 1,
+
+			);
+			$win->draw();
+		}
+		case 2 {
+			my $obj = $win->getobj('cdd');
+			my $prog = $win->add(
+				'progress',
+				'Progressbar',
+				-y => 7,
+				-pos => 0,
+				-min => 0,
+				-max => 100,
+			);
+			$obj->text('Cleaning up first ...');
+			$win->draw();
+
+			`rm -rf needed/dev *.iso`;
+			$prog->pos(25);
+			$win->draw();
+
+			`rm -rf image/live/*.squashfs`;
+			$prog->pos(40);
+			$win->draw();
+
+			#`rm -rf chroot`;
+			#my $pwd = $ENV{'PWD'};
+			#chdir 'needed/scripts';
+			#`./adj_run_n_var.sh`;
+			#chdir "$pwd";
+			#`find /run -type d exec 'mkdir -p -- chroot/{} \\;'`;
+			sleep 1;
+			$prog->pos(75);
+			$win->draw();
+
+			`mkdir -p image/isolinux image/live chroot`;
+			`cp -f needed/isolinux/* image/isolinux/`;
+			$prog->pos(100);
+			$obj->text('Creating directories ...');
+			$win->draw();
+
+			
+			#my $pwd = $ENV{'PWD'};
+			#chdir "$pwd/needed";
+			#`tar xf dirs.tar.xz`;
+			#chdir "$pwd";
+			sleep 1;
+			$win->delete('progress');
+			$obj->text("Directories created.".
+				"Proceed to next stage");
+			$win->draw();
+		}
+		case 3 {
+			$win->delete('cdd');
+			$win->draw();
+		}
+	}
+}
+
+sub sync
+{
+	my ($c) = @_;
+	switch($c)
+	{
+		case 1 {
+			$win->title("Sync Current OS");
+			$win->add(
+				'slabel',
+				'TextViewer',
+				-text => "Sync your running OS with ".
+					"temporary chroot ? Select an ".
+					"option and Proceed -",
+				-height => 4,
+				-wrapping => 1,
+
+			);
+			my $choice = $win->add(
+				'schoice',
+				'Listbox',
+				-values => [1,2],
+				-y => 5,
+				-height => 2,
+				-labels => {
+					1=>"Yes, make a copy of my OS",
+					2=>"No, it's not needed now"
+				},
+				-radio => 1,				
+			);
+			$choice->focus();
+			$win->draw();
+		}
+		case 2 {
+			my $obj = $win->getobj('schoice');
+			my $selection = $obj->get();
+			$win->delete('schoice');
+			$obj = $win->getobj('slabel');
+			$obj->text("");
+			$win->draw();
+
+			if($selection == 1)
+			{
+				$obj->text("Syncing ...");
+				my $prog = $win->add(
+					'progress',
+					'Progressbar',
+					-pos => 0,
+					-y => 5,
+					-min => 0,
+					-max => 100,
+				);
+				$win->draw();
+				do_sync();
+				$obj->text("Syncing Done. Proceed to next stage.");
+				$win->delete('progress');
+				$win->draw();
+			}else
+			{
+				$obj->text("Let's Proceed to next stage.");
+				$win->draw();
+			}
+		}
+		case 3 {
+			$win->delete('slabel');
+			$win->draw();
+		}
+	}
+}
+
+sub do_sync
+{
+	my @dirs = ('/bin','/boot','/dev','/etc','/home','/lib','/media',
+		'/mnt','/opt','/proc','/root','/run','/sbin','/srv',
+		'/sys','/tmp','/usr','/var','needed/chroot/');
+	my $exc = "-av --one-file-system --exclude=/dev/* --exclude=/root/* --exclude=/home/* --exclude=/media/* --exclude=/etc/fstab --exclude=/mnt/* --exclude=/proc/* --exclude=/sys/* --exclude=/run/* --exclude=/tmp/* --exclude=/var/backups/* --exclude=/var/cache/* --exclude=/var/lock/* --exclude=/var/log/* --exclude=/var/mail/* --exclude=/var/run/* --exclude=/var/tmp/* --exclude=/var/lib/lightdm/* --exclude=/var/lib/sudo/* --exclude=/var/lib/plymouth/* --exclude=/var/state --exclude=/var/lib/gconf/* /var/lib/nfs/* --exclude=/var/lib/ucf/* --exclude=/var/lib/dbus/*";
+	my $obj = $win->getobj('progress');
+	my $cnt = @dirs;
+	my $prog = 0;
+
+
+	#make sure user files are in right mode
+	`chown -R root:root needed/chroot/*`;
+	`chmod -R 0755 needed/chroot/*`;
+
+	foreach (@dirs)
+	{
+		`rsync $exc $_ chroot`;
+		$obj->pos(($prog/$cnt ) *100);
+		$win->draw();
+		$prog++;
+	}
+
+	#`rsync -av --one-file-system needed/dev chroot`;
+	`touch chroot/etc/fstab chroot/run/utmp`;
+	
+	$obj->pos(($prog/$cnt ) *100);
+	$win->draw();
+}
+
+sub do_config_chroot
+{
+	my $obj = $win->getobj('cchrootusr');
+	my $usr = $obj->get();
+	if(length($usr) > 0)
+	{
+		$obj = $win->getobj('cchrootlbl');
+
+		$win->delete('cchrootusr');
+		$win->delete('cchrootcont');
+		$obj->text('Configuring ...');
+		$win->draw();
+
+		`mount -R /dev chroot/dev`;
+		`mount -t sysfs sysfs chroot/sys`;
+		`mount -t proc proc chroot/proc`;
+		`chroot chroot /bin/bash -c "userdel -f $usr"`;
+		`chroot chroot /bin/bash -c "useradd -s /bin/bash -rUm live"`;
+		`cp needed/scripts/autolive.exp chroot/`;
+		`chroot chroot /bin/bash -c "expect -f /autolive.exp"`;
+		`umount -R chroot/dev`;
+		`umount chroot/sys`;
+		`umount chroot/proc`;
+		`rm -f chroot/autolive.exp`;
+		#
+		# FAULTY ??
+		#
+		my $pwd = $ENV{'PWD'};
+		chdir "$pwd/needed/scripts";
+		`./update_initramfs.sh`;
+		chdir "$pwd";
+
+
+		$obj->text("User <$usr> is removed\n".
+			"Init RAM Disk updated.\n".
+			"NOTE : Remember your root password.\n".
+			"Root password is unchanged.\n".
+			"A Live user with username \"live\" and password \"live\" is created. ".
+			"Please login as the live user."
+		);
+	}
+}
+
+sub config_chroot
+{
+	my ($c) = @_;
+	switch($c)
+	{
+		case 1 {
+			$win->title("Config chroot");
+			$win->add(
+				'cchrootlbl',
+				'TextViewer',
+				-height => 7,
+				-text => "Now we need to configure the chroot ".
+					"for live system. Skip it if already ".
+					"done.",
+				-wrapping => 1,
+
+			);
+			my $choice =  $win->add(
+				'cchrootchoice',
+				'Listbox',
+				-values => [1,2],
+				-y => 6,
+				-height => 2,
+				-labels => {
+					1 => "Yes configure",
+					2 => "No I've done it already"
+				},
+				-radio => 1,
+			);
+			$choice->focus();
+			$win->draw();
+		}
+		case 2 {
+			my $obj = $win->getobj('cchrootchoice');
+			my $selection = $obj->get();
+			$obj = $win->getobj('cchrootlbl');
+			$obj->text("");
+			$win->draw();
+
+			if($selection == 1)
+			{
+				$win->delete('cchrootchoice');
+				$obj->text("Enter your current user name".
+					"and press Continue(DO NOT Press Proceed)");
+				my $usr = $win->add(
+					'cchrootusr',
+					'TextEntry',
+					-y => 6,
+					-height => 1,
+					-bg => 'black',
+					-fg => 'white',
+				);
+				$win->add(
+					'cchrootcont',
+					'Buttonbox',
+					-x => $win->width/2 - 4,
+					-y => 11,
+					-height => 2,
+					-buttons => [
+						{
+							-label => 'Continue',
+							-onpress => \&do_config_chroot,
+						},
+					],					
+				);
+				$usr->focus();
+				$win->draw();;
+			}else
+			{
+				$win->delete('cchrootchoice');
+				$obj->text("Ok let's Proceed to next stage.");
+				$win->draw();
+			}
+		}
+		case 3 {
+			$win->delete('cchrootlbl');
+			$win->draw();
+		}
+	}
+}
+
+sub mk_squashfs
+{
+	my ($c) = @_;
+	switch($c)
+	{
+		case 1 {
+			my $l = $win->add(
+				'label',
+				'TextViewer',
+				-height => 6,
+				-text => "Creating Squashfs.\n".
+					"This may take a while depending on ".
+					"your processor and file size.",
+				-wrapping => 1,
+			);
+			$win->title('Create Live FS');
+			$win->draw();
+
+			`mksquashfs chroot image/live/filesystem.squashfs > mksquashfs_log.txt`;
+
+			$l->text("Live filesystem created. ".
+				"Proceed to final level. ".
+				"Read mksquashfs_log.txt ".
+				"for detailed output ".
+				"of mksquashfs.");
+			$win->draw();
+		}
+		case 2 {
+			$win->delete('label');
+			$win->draw();
+		}
+	}
+}
+
+sub mk_iso
+{
+	my $l = $win->add(
+		'label',
+		'TextViewer',
+		-height => 6,
+		-text => "Creating iso image...\n",
+	);
+	$win->title('Final stage');
+	$win->draw();
+	my $args = "-as mkisofs -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table";
+	my $iso = "live.iso";
+	my $cmd ="xorriso $args -o $iso image";
+	`$cmd 2> xorriso_log.txt`;
+
+	$l->text("All done. Now test your ISO.\n".
+		"Enjoy Your Linux !!!");
+}
+
+sub do_stuffs
+{
+	my ($c) = @_;
+	if($c == 'greet')
+	{
+		greet(1);
+	}else {
+		switch($stage)
+		{
+			case 0{
+				greet(0);
+				create_dir(1);
+				$stage++;
+			}
+			case 1 {
+				create_dir(2);
+				$stage++;
+			}
+			case 2 {
+				create_dir(3);
+				sync(1);
+				$stage++;
+			}
+			case 3 {
+				sync(2);
+				$stage++;
+			}
+			case 4 {
+				sync(3);
+				config_chroot(1);
+				$stage++;
+			}
+			case 5 {
+				config_chroot(2);
+				$stage++;
+			}
+			case 6 {
+				config_chroot(3);
+				mk_squashfs(1);
+				$stage++;
+			}
+			case 7 {
+				mk_squashfs(2);
+				mk_iso();
+				$stage++;
+			}
+			case 8 {
+				exit(0);
+			}
+		}
+	}	
+}
+
+do_stuffs('greet');
+$cui->mainloop();
+
