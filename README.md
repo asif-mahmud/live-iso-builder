@@ -39,16 +39,34 @@ complete.
 
 One request for all - `Please Don't Reinvent It`. If you ask me, I didn't do that. I just read some articles, looked out for 
 stuffs that would do the job and ended up with tiredness of failure. So I observed the procedure and wrote a script to 
-automate the work. If you any bug using it please DON'T REINVENT or REWRITE the whole thing with a different name. You join 
-the prjoct on github, update the existing code or request for updating it. It is a free software and your work and time will
+automate the work. If you find any bug using it please DON'T REINVENT or REWRITE the whole thing with a different name. You join 
+the project on github, update the existing code to make it more complete. It is a free software and your work and time will
 be voluntary. But your contribution will be noted.
 
 ## Screens :
 
+![alt text] ( screens/welcome.png )
+![alt text] ( screens/sync1.png )
+![alt text] ( screens/sync1.png )
+![alt text] ( screens/config.png )
+![alt text] ( screens/vbox.png )
+
+## How to :
+
+Run build as super user to create ISO. Run clean as super user to clean up previous builds.
+
+## More Info :
+
+For more on it please browse the docs folder and read the docs there.
+
+## License :
+
+GPLv2
 
 ## Version Info :
 
 ### Current version - 0.0.1 :
 
+* Creates a live ISO with a user `live` and password `live`. 
 * Worked with Debian 32 bit OSs.
 * No Live System installer included yet.
