@@ -1,2 +1,2 @@
 #!/bin/bash
-rm -rfv chroot image needed/dev
+rm -rf chroot image

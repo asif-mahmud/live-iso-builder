@@ -1,0 +1,8 @@
+/home/*
+/dev/*
+/proc/*
+/sys/*
+/media/*
+/mnt/*
+/var/cache/*
+/var/mail/*

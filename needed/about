@@ -1,0 +1,10 @@
+Live Linux ISO Builder
+======================
+ 
+Version : 2.0.0
+Author : Asif Mahmud Shimon
+
+Welcome to live ISO builder for linux distros. This little app will 
+help you create a live bootable ISO from your running linux. You 
+can perform or avoid any customization you want before using this app.
+

@@ -5,7 +5,6 @@ Script to create linux-based OSs' Live Installable ISO.
 ## Prerequisites :
 
 * Perl >= 5 
-* Perl Module Curses::UI
 * xorriso
 * squashfs-tools
 * expect
@@ -43,14 +42,6 @@ automate the work. If you find any bug using it please DON'T REINVENT or REWRITE
 the project on github, update the existing code to make it more complete. It is a free software and your work and time will
 be voluntary. But your contribution will be noted.
 
-## Screens :
-
-![alt text] ( screens/welcome.png )
-![alt text] ( screens/sync1.png )
-![alt text] ( screens/sync1.png )
-![alt text] ( screens/config.png )
-![alt text] ( screens/vbox.png )
-
 ## How to :
 
 Run build as super user to create ISO. Run clean as super user to clean up previous builds.
@@ -65,7 +56,14 @@ GPLv2
 
 ## Version Info :
 
-### Current version - 0.0.1 :
+### Current version - 2.0.0 :
+
+* Removed Curses::UI dependency.
+* More customizing power.
+* Faster.
+* Can work with both 32 and 64 bit OSs.
+
+### version - 1.0.0 :
 
 * Creates a live ISO with a user `live` and password `live`. 
 * Worked with Debian 32 bit OSs.
